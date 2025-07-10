@@ -1,169 +1,71 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-export default function AIVideoEditorWithClaude() {
+export default function CapCutStyleEditor() {
   const [videoFile, setVideoFile] = useState(null);
   const [videoUrl, setVideoUrl] = useState('');
   const [currentStep, setCurrentStep] = useState('upload');
-  const [campaignGoal, setCampaignGoal] = useState('');
-  const [targetAudience, setTargetAudience] = useState('');
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(1);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
-  const [cuts, setCuts] = useState([]);
-  const [selectedCut, setSelectedCut] = useState(null);
-  const [filters, setFilters] = useState({
+  const [zoom, setZoom] = useState(1);
+  
+  // Timeline and editing
+  const [timeline, setTimeline] = useState([]);
+  const [selectedClip, setSelectedClip] = useState(null);
+  const [draggedClip, setDraggedClip] = useState(null);
+  const [splitPoints, setSplitPoints] = useState([]);
+  
+  // Effects and filters
+  const [activeFilters, setActiveFilters] = useState({
     brightness: 100,
     contrast: 100,
     saturation: 100,
-    blur: 0
+    blur: 0,
+    hue: 0,
+    sharpen: 0
   });
-  const [subtitles, setSubtitles] = useState([]);
-  const [showSubtitles, setShowSubtitles] = useState(true);
-  const [analysisResult, setAnalysisResult] = useState(null);
-  const [errorMessage, setErrorMessage] = useState('');
-
+  
+  // Text and overlays
+  const [textLayers, setTextLayers] = useState([]);
+  const [selectedTextLayer, setSelectedTextLayer] = useState(null);
+  const [showTextEditor, setShowTextEditor] = useState(false);
+  
+  // Audio
+  const [audioTracks, setAudioTracks] = useState([]);
+  const [musicLibrary, setMusicLibrary] = useState([
+    { id: 1, name: "Upbeat Corporate", category: "business", duration: 180 },
+    { id: 2, name: "Chill Vibes", category: "lifestyle", duration: 120 },
+    { id: 3, name: "Epic Trailer", category: "dramatic", duration: 90 }
+  ]);
+  
+  // Transitions
+  const [transitions, setTransitions] = useState([]);
+  const [availableTransitions] = useState([
+    { id: 'fade', name: 'Fade', icon: '🌅' },
+    { id: 'slide', name: 'Slide', icon: '➡️' },
+    { id: 'zoom', name: 'Zoom', icon: '🔍' },
+    { id: 'dissolve', name: 'Dissolve', icon: '✨' },
+    { id: 'wipe', name: 'Wipe', icon: '🧹' }
+  ]);
+  
+  // Effects library
+  const [effectsLibrary] = useState([
+    { id: 1, name: "Vintage Film", category: "retro", preview: "🎞️" },
+    { id: 2, name: "Neon Glow", category: "modern", preview: "💫" },
+    { id: 3, name: "Cinematic", category: "professional", preview: "🎬" },
+    { id: 4, name: "Glitch", category: "tech", preview: "📺" },
+    { id: 5, name: "Bokeh", category: "artistic", preview: "✨" },
+    { id: 6, name: "Film Grain", category: "retro", preview: "🌪️" }
+  ]);
+  
+  // Active panel
+  const [activePanel, setActivePanel] = useState('timeline');
+  
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
-
-  // פונקציה לניתוח וידאו עם Claude API אמיתי
-  const analyzeVideoWithClaude = async () => {
-    setIsAnalyzing(true);
-    setErrorMessage('');
-    
-    try {
-      // בנה prompt מפורט לClaude
-      const prompt = `אתה מומחה עולמי לעריכת וידאו ושיווק דיגיטלי עם 20 שנות ניסיון.
-
-המשימה: נתח וידאו לקמפיין שיווקי ותן המלצות מקצועיות.
-
-פרטי הקמפיין:
-- מטרה: ${campaignGoal}
-- קהל יעד: ${targetAudience}
-- אורך וידאו משוער: ${Math.floor(duration)} שניות
-
-בצע ניתוח מעמיק והחזר רק JSON תקין בפורמט הזה (ללא טקסט נוסף):
-
-{
-  "mood": "תיאור מצב הרוח הכללי של הוידאו (2-3 מילים)",
-  "emotions": ["רגש1", "רגש2", "רגש3"],
-  "keyMoments": [
-    {"time": 5, "description": "תיאור מומנט חשוב בוידאו"},
-    {"time": 15, "description": "תיאור מומנט חשוב נוסף"},
-    {"time": 25, "description": "תיאור מומנט שלישי"}
-  ],
-  "suggestedCuts": [
-    {"start": 2, "end": 8, "reason": "חיתוך דינמי למכירות", "type": "intro"},
-    {"start": 10, "end": 18, "reason": "מיקוד בתגובות חיוביות", "type": "main"},
-    {"start": 20, "end": 28, "reason": "קריאה לפעולה חזקה", "type": "outro"}
-  ],
-  "subtitles": [
-    {"start": 0, "end": 3, "text": "כותרת פותחת מושכת"},
-    {"start": 3, "end": 7, "text": "הצגת בעיה או צורך"},
-    {"start": 7, "end": 12, "text": "הצגת הפתרון שלכם"},
-    {"start": 12, "end": 16, "text": "הוכחה והמלצות"},
-    {"start": 16, "end": 20, "text": "קריאה לפעולה ברורה"}
-  ],
-  "campaignAdvice": "3-4 עצות ספציפיות לשיפור הקמפיין הזה",
-  "targetOptimization": "כיצד לבצע אופטימיזציה מדויקת לקהל היעד הנבחר",
-  "callToAction": "המלצה לקריאת פעולה אפקטיבית",
-  "platformRecommendations": {
-    "facebook": "עצות ספציפיות לפייסבוק",
-    "instagram": "עצות ספציפיות לאינסטגרם", 
-    "youtube": "עצות ספציפיות ליוטיוב",
-    "linkedin": "עצות ספציפיות ללינקדאין"
-  }
-}
-
-התמקד במטרה "${campaignGoal}" וקהל היעד "${targetAudience}".
-ודא שכל ההמלצות מותאמות בדיוק למטרות אלה.
-החזר רק JSON תקין - ללא הקדמות או הסברים.`;
-
-      console.log('שולח לClaude:', prompt);
-      
-      // קריאה לClaude API
-      const response = await window.claude.complete(prompt);
-      console.log('תגובה מClaude:', response);
-      
-      // נסה לפרסר את ה-JSON
-      let analysis;
-      try {
-        analysis = JSON.parse(response);
-      } catch (parseError) {
-        console.log('שגיאת parsing, מנסה לנקות את התגובה...');
-        // נסה להוציא רק את ה-JSON מהתגובה
-        const jsonMatch = response.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          analysis = JSON.parse(jsonMatch[0]);
-        } else {
-          throw new Error('לא הצלחתי לפרסר את התגובה מClaude');
-        }
-      }
-      
-      // וודא שיש לנו את כל השדות הנדרשים
-      if (!analysis.subtitles || !analysis.suggestedCuts) {
-        throw new Error('התגובה מClaude לא כוללת את כל השדות הנדרשים');
-      }
-      
-      // עדכן את הstate עם התוצאות האמיתיות מClaude
-      setSubtitles(analysis.subtitles);
-      
-      const processedCuts = analysis.suggestedCuts.map((cut, index) => ({
-        id: Date.now() + index,
-        start: cut.start,
-        end: cut.end,
-        type: cut.type || 'ai',
-        label: cut.reason
-      }));
-      
-      setCuts(processedCuts);
-      setAnalysisResult(analysis);
-      setCurrentStep('edit');
-      
-      console.log('ניתוח הושלם בהצלחה:', analysis);
-      
-    } catch (error) {
-      console.error('שגיאה בניתוח AI:', error);
-      setErrorMessage(`שגיאה בניתוח: ${error.message}`);
-      
-      // fallback לדוגמא בסיסית במקרה של שגיאה
-      const fallbackAnalysis = {
-        mood: "אנרגטי ומעורר השראה",
-        emotions: ["שמחה", "התרגשות", "ביטחון"],
-        keyMoments: [
-          { time: 5, description: "מומנט פתיחה" },
-          { time: 15, description: "הצגת תוכן מרכזי" },
-          { time: 25, description: "סיכום וקריאה לפעולה" }
-        ],
-        suggestedCuts: [
-          { start: 2, end: 8, reason: "פתיחה דינמית", type: "intro" },
-          { start: 12, end: 20, reason: "תוכן מרכזי", type: "main" }
-        ],
-        subtitles: [
-          { start: 0, end: 3, text: "כותרת פותחת" },
-          { start: 3, end: 7, text: "הצגת הנושא" },
-          { start: 7, end: 12, text: "פיתוח הרעיון" }
-        ],
-        campaignAdvice: "השתמש בפתיחה חזקה ובקריאת פעולה ברורה"
-      };
-      
-      setSubtitles(fallbackAnalysis.subtitles);
-      setCuts(fallbackAnalysis.suggestedCuts.map((cut, index) => ({
-        id: Date.now() + index,
-        start: cut.start,
-        end: cut.end,
-        type: cut.type,
-        label: cut.reason
-      })));
-      setAnalysisResult(fallbackAnalysis);
-      setCurrentStep('edit');
-      
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
+  const timelineRef = useRef(null);
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
@@ -171,7 +73,22 @@ export default function AIVideoEditorWithClaude() {
       setVideoFile(file);
       const url = URL.createObjectURL(file);
       setVideoUrl(url);
-      setCurrentStep('setup');
+      
+      // Initialize timeline with the main video clip
+      const mainClip = {
+        id: Date.now(),
+        type: 'video',
+        name: file.name,
+        url: url,
+        startTime: 0,
+        endTime: 0, // Will be set when metadata loads
+        x: 0,
+        width: 100, // Percentage of timeline
+        track: 0
+      };
+      
+      setTimeline([mainClip]);
+      setCurrentStep('edit');
     }
   };
 
@@ -188,7 +105,21 @@ export default function AIVideoEditorWithClaude() {
         setVideoFile(file);
         const url = URL.createObjectURL(file);
         setVideoUrl(url);
-        setCurrentStep('setup');
+        
+        const mainClip = {
+          id: Date.now(),
+          type: 'video',
+          name: file.name,
+          url: url,
+          startTime: 0,
+          endTime: 0,
+          x: 0,
+          width: 100,
+          track: 0
+        };
+        
+        setTimeline([mainClip]);
+        setCurrentStep('edit');
       }
     }
   };
@@ -213,6 +144,10 @@ export default function AIVideoEditorWithClaude() {
   const handleLoadedMetadata = () => {
     if (videoRef.current) {
       setDuration(videoRef.current.duration);
+      // Update the main clip duration
+      setTimeline(prev => prev.map(clip => 
+        clip.type === 'video' ? { ...clip, endTime: videoRef.current.duration } : clip
+      ));
     }
   };
 
@@ -230,85 +165,127 @@ export default function AIVideoEditorWithClaude() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
   };
 
-  const getCurrentSubtitle = () => {
-    return subtitles.find(sub => 
-      currentTime >= sub.start && currentTime <= sub.end
-    );
+  // Split video at current time
+  const splitAtCurrentTime = () => {
+    if (!selectedClip || selectedClip.type !== 'video') return;
+    
+    const splitTime = currentTime;
+    if (splitTime <= selectedClip.startTime || splitTime >= selectedClip.endTime) return;
+    
+    const newClips = timeline.map(clip => {
+      if (clip.id === selectedClip.id) {
+        // Create two clips from the split
+        const firstClip = {
+          ...clip,
+          endTime: splitTime,
+          width: ((splitTime - clip.startTime) / (clip.endTime - clip.startTime)) * clip.width
+        };
+        
+        const secondClip = {
+          ...clip,
+          id: Date.now(),
+          startTime: splitTime,
+          x: clip.x + firstClip.width,
+          width: clip.width - firstClip.width
+        };
+        
+        return [firstClip, secondClip];
+      }
+      return clip;
+    }).flat();
+    
+    setTimeline(newClips);
+    setSplitPoints([...splitPoints, splitTime]);
   };
 
-  const addCut = () => {
-    const newCut = {
+  // Add text layer
+  const addTextLayer = () => {
+    const newTextLayer = {
       id: Date.now(),
-      start: currentTime,
-      end: Math.min(currentTime + 3, duration),
-      type: 'manual',
-      label: `חיתוך ידני ${cuts.length + 1}`
+      text: 'Add your text here',
+      x: 50, // Percentage from left
+      y: 50, // Percentage from top
+      fontSize: 24,
+      color: '#ffffff',
+      fontFamily: 'Arial',
+      fontWeight: 'bold',
+      startTime: currentTime,
+      endTime: currentTime + 3,
+      animation: 'none'
     };
-    setCuts([...cuts, newCut]);
+    
+    setTextLayers([...textLayers, newTextLayer]);
+    setSelectedTextLayer(newTextLayer);
+    setShowTextEditor(true);
   };
 
-  const deleteCut = (cutId) => {
-    setCuts(cuts.filter(cut => cut.id !== cutId));
-    setSelectedCut(null);
+  // Add transition between clips
+  const addTransition = (transitionType, clipIndex) => {
+    const newTransition = {
+      id: Date.now(),
+      type: transitionType,
+      position: clipIndex,
+      duration: 1.0
+    };
+    
+    setTransitions([...transitions, newTransition]);
   };
 
-  const applyCut = (cut) => {
-    seekTo(cut.start);
-    setSelectedCut(cut);
+  // Apply effect to selected clip
+  const applyEffect = (effect) => {
+    if (!selectedClip) return;
+    
+    const updatedTimeline = timeline.map(clip => 
+      clip.id === selectedClip.id 
+        ? { ...clip, effect: effect.id, effectName: effect.name }
+        : clip
+    );
+    
+    setTimeline(updatedTimeline);
   };
 
-  const exportVideo = () => {
+  // Add music track
+  const addMusicTrack = (music) => {
+    const newAudioTrack = {
+      id: Date.now(),
+      name: music.name,
+      startTime: 0,
+      endTime: music.duration,
+      volume: 0.5,
+      track: audioTracks.length + 1
+    };
+    
+    setAudioTracks([...audioTracks, newAudioTrack]);
+  };
+
+  // Export project
+  const exportProject = () => {
     const exportData = {
-      originalFile: videoFile?.name,
-      cuts: cuts,
-      filters: filters,
-      subtitles: subtitles,
-      analysis: analysisResult
+      video: {
+        file: videoFile?.name,
+        duration: duration,
+        filters: activeFilters
+      },
+      timeline: timeline,
+      textLayers: textLayers,
+      audioTracks: audioTracks,
+      transitions: transitions,
+      splitPoints: splitPoints
     };
     
-    console.log('נתוני יצוא:', exportData);
+    console.log('Export data:', exportData);
     
-    // בגרסה מלאה - כאן יהיה יצוא אמיתי
-    alert(`🎬 מייצא וידאו מקצועי!
+    alert(`🎬 מייצא פרויקט מקצועי!
 
-📁 קובץ: ${videoFile?.name}
-✂️ חיתוכים: ${cuts.length}
-🎨 אפקטים: מופעלים
-💬 כתוביות: ${subtitles.length}
-🤖 ניתוח AI: כלול
+📹 וידאו: ${videoFile?.name}
+✂️ חיתוכים: ${splitPoints.length}
+📝 טקסטים: ${textLayers.length}
+🎵 מוזיקה: ${audioTracks.length}
+🌟 אפקטים: ${timeline.filter(c => c.effect).length}
+🔀 מעברים: ${transitions.length}
 
-בגרסה מלאה - הוידאו יישמר עם כל העריכות!`);
+יייצא כקובץ MP4 מקצועי!`);
   };
-
-  const applyAutoEdit = async () => {
-    if (!analysisResult) {
-      alert('תחילה הפעל ניתוח AI');
-      return;
-    }
-    
-    // מוסיף את כל החיתוכים המוצעים של ה-AI
-    const aiCuts = analysisResult.suggestedCuts.map((cut, index) => ({
-      id: Date.now() + index + 1000,
-      start: cut.start,
-      end: cut.end,
-      type: 'auto-ai',
-      label: `AI אוטו: ${cut.reason}`
-    }));
-    
-    setCuts([...cuts, ...aiCuts]);
-    alert(`🤖 הופעלה עריכה אוטומטית!
-    
-נוספו ${aiCuts.length} חיתוכים חכמים מבוססי AI
-מותאמים למטרה: ${campaignGoal}
-מותאמים לקהל: ${targetAudience}`);
-  };
-
-  useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.playbackRate = playbackSpeed;
-      videoRef.current.volume = volume;
-    }
-  }, [playbackSpeed, volume]);
 
   if (currentStep === 'upload') {
     return (
@@ -317,18 +294,18 @@ export default function AIVideoEditorWithClaude() {
           <div className="text-center mb-12">
             <div className="flex items-center justify-center gap-4 mb-6">
               <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
-                <span className="text-3xl">🤖</span>
+                <span className="text-3xl">✂️</span>
               </div>
               <h1 className="text-6xl font-black bg-gradient-to-r from-white via-purple-200 to-pink-200 bg-clip-text text-transparent">
-                AI Video Studio Pro
+                ProCut Editor
               </h1>
             </div>
             <p className="text-2xl text-gray-300 font-light mb-4">
-              עורך וידאו מקצועי מבוסס Claude AI ברמה בינלאומית
+              עורך וידאו מקצועי בסגנון CapCut עם כלי עריכה מתקדמים
             </p>
             <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 rounded-xl p-4 max-w-2xl mx-auto">
-              <p className="text-green-200 font-semibold">🔥 חדש! ניתוח וידאו אמיתי עם Claude AI</p>
-              <p className="text-green-300 text-sm">ניתוח מתקדם, כתוביות חכמות והמלצות מקצועיות</p>
+              <p className="text-green-200 font-semibold">🔥 כלי עריכה מקצועיים!</p>
+              <p className="text-green-300 text-sm">חיתוך, אפקטים, טקסט, מוזיקה, מעברים ועוד</p>
             </div>
           </div>
 
@@ -338,12 +315,10 @@ export default function AIVideoEditorWithClaude() {
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-2xl group-hover:from-purple-500/20 group-hover:to-pink-500/20 transition-all duration-300"></div>
-            
             <div className="relative z-10">
               <div className="text-8xl mb-6 group-hover:scale-110 transition-transform duration-300">🎬</div>
-              <h3 className="text-3xl font-bold text-white mb-4">העלה וידאו לניתוח AI</h3>
-              <p className="text-xl text-gray-300 mb-6">גרור וידאו או לחץ לבחירה - Claude ינתח אוטומטית</p>
+              <h3 className="text-3xl font-bold text-white mb-4">התחל עריכה מקצועית</h3>
+              <p className="text-xl text-gray-300 mb-6">גרור וידאו או לחץ לבחירה</p>
               
               <div className="flex items-center justify-center gap-6 mb-8">
                 <div className="bg-gradient-to-r from-blue-500 to-purple-500 px-4 py-2 rounded-full text-white font-semibold">MP4</div>
@@ -362,21 +337,26 @@ export default function AIVideoEditorWithClaude() {
             />
           </div>
 
-          <div className="mt-12 grid md:grid-cols-3 gap-8 text-center">
-            <div className="bg-black/30 backdrop-blur-sm rounded-xl p-6 border border-purple-500/20">
-              <div className="text-4xl mb-4">🧠</div>
-              <h3 className="text-xl font-bold text-white mb-2">Claude AI אמיתי</h3>
-              <p className="text-gray-400">ניתוח מתקדם עם GPT Claude לזיהוי רגשות, מומנטים וחיתוכים</p>
-            </div>
+          <div className="mt-12 grid md:grid-cols-4 gap-6 text-center">
             <div className="bg-black/30 backdrop-blur-sm rounded-xl p-6 border border-purple-500/20">
               <div className="text-4xl mb-4">✂️</div>
-              <h3 className="text-xl font-bold text-white mb-2">עריכה חכמה</h3>
-              <p className="text-gray-400">חיתוכים אוטומטיים מבוססי AI מותאמים למטרות השיווק</p>
+              <h3 className="text-xl font-bold text-white mb-2">חיתוך מדויק</h3>
+              <p className="text-gray-400">חתוך, פצל וערוך בקלות עם timeline מקצועי</p>
             </div>
             <div className="bg-black/30 backdrop-blur-sm rounded-xl p-6 border border-purple-500/20">
-              <div className="text-4xl mb-4">🎯</div>
-              <h3 className="text-xl font-bold text-white mb-2">מקצועי</h3>
-              <p className="text-gray-400">המלצות מותאמות לפלטפורמות שיווק שונות</p>
+              <div className="text-4xl mb-4">🎨</div>
+              <h3 className="text-xl font-bold text-white mb-2">אפקטים ופילטרים</h3>
+              <p className="text-gray-400">ספריית אפקטים עשירה לכל סגנון</p>
+            </div>
+            <div className="bg-black/30 backdrop-blur-sm rounded-xl p-6 border border-purple-500/20">
+              <div className="text-4xl mb-4">📝</div>
+              <h3 className="text-xl font-bold text-white mb-2">טקסט ואנימציות</h3>
+              <p className="text-gray-400">הוסף כותרות וטקסטים מעוצבים</p>
+            </div>
+            <div className="bg-black/30 backdrop-blur-sm rounded-xl p-6 border border-purple-500/20">
+              <div className="text-4xl mb-4">🎵</div>
+              <h3 className="text-xl font-bold text-white mb-2">מוזיקה ואודיו</h3>
+              <p className="text-gray-400">ספריית מוזיקה וכלי עריכת אודיו</p>
             </div>
           </div>
         </div>
@@ -384,474 +364,497 @@ export default function AIVideoEditorWithClaude() {
     );
   }
 
-  if (currentStep === 'setup') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-8">
-            <h2 className="text-4xl font-bold text-white mb-4">🎯 הגדרת קמפיין לניתוח AI</h2>
-            <p className="text-xl text-gray-300">Claude ינתח את הוידאו בהתאם למטרות שתבחר</p>
-          </div>
-
-          {errorMessage && (
-            <div className="bg-red-500/20 border border-red-500/30 rounded-xl p-4 mb-6 text-center">
-              <p className="text-red-200">⚠️ {errorMessage}</p>
-            </div>
-          )}
-
-          <div className="grid lg:grid-cols-2 gap-8 mb-8">
-            <div className="bg-black/40 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-purple-500/20">
-              <div className="grid gap-8">
-                <div>
-                  <label className="flex items-center gap-3 text-xl font-bold text-white mb-6">
-                    <div className="w-8 h-8 bg-gradient-to-r from-red-500 to-orange-500 rounded-lg flex items-center justify-center">
-                      🎯
-                    </div>
-                    מטרת הקמפיין (לניתוח AI)
-                  </label>
-                  <select
-                    value={campaignGoal}
-                    onChange={(e) => setCampaignGoal(e.target.value)}
-                    className="w-full p-4 bg-black/50 border border-purple-500/30 rounded-xl text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-lg"
-                  >
-                    <option value="">בחר מטרה עסקית</option>
-                    <option value="מכירות והמרות">💰 מכירות והמרות</option>
-                    <option value="מודעות לברנד">🏢 מודעות לברנד</option>
-                    <option value="אנגיימנט ואינטראקציה">📱 אנגיימנט ואינטראקציה</option>
-                    <option value="חינוך והדרכה">📚 חינוך והדרכה</option>
-                    <option value="גיוס ואיוש">👥 גיוס ואיוש</option>
-                    <option value="שימור לקוחות">🔄 שימור לקוחות</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="flex items-center gap-3 text-xl font-bold text-white mb-6">
-                    <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
-                      👥
-                    </div>
-                    קהל היעד (לניתוח AI)
-                  </label>
-                  <select
-                    value={targetAudience}
-                    onChange={(e) => setTargetAudience(e.target.value)}
-                    className="w-full p-4 bg-black/50 border border-purple-500/30 rounded-xl text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-lg"
-                  >
-                    <option value="">בחר קהל יעד</option>
-                    <option value="דור המילניום (22-35)">🧑‍💻 דור המילניום (22-35)</option>
-                    <option value="אנשי מקצוע (35-50)">👔 אנשי מקצוע (35-50)</option>
-                    <option value="משפחות (25-45)">👨‍👩‍👧‍👦 משפחות (25-45)</option>
-                    <option value="גיל השלישי (50+)">👴 גיל השלישי (50+)</option>
-                    <option value="עסקים וארגונים">🏢 עסקים וארגונים</option>
-                    <option value="סטודנטים וצעירים (18-25)">🎓 סטודנטים וצעירים (18-25)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="mt-10 text-center">
-                <button
-                  onClick={analyzeVideoWithClaude}
-                  disabled={!campaignGoal || !targetAudience || isAnalyzing}
-                  className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-12 py-4 rounded-xl font-bold text-xl shadow-lg hover:shadow-purple-500/25 transition-all duration-300 transform hover:scale-105"
-                >
-                  {isAnalyzing ? (
-                    <div className="flex items-center gap-3">
-                      <div className="animate-spin w-6 h-6 border-2 border-white border-t-transparent rounded-full"></div>
-                      Claude מנתח את הוידאו...
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-3">
-                      <span>🤖</span>
-                      הפעל ניתוח Claude AI אמיתי
-                    </div>
-                  )}
-                </button>
-                
-                {isAnalyzing && (
-                  <div className="mt-4 text-gray-300 text-sm">
-                    <p>⏳ Claude מנתח את הוידאו...</p>
-                    <p>🔍 זיהוי רגשות ומומנטים מרכזיים</p>
-                    <p>✂️ יצירת חיתוכים חכמים</p>
-                    <p>💬 הכנת כתוביות מותאמות</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="bg-black/40 backdrop-blur-sm rounded-2xl shadow-2xl p-6 border border-purple-500/20">
-              <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-                <span>🎬</span>
-                תצוגה מקדימה
-              </h3>
-              <div className="aspect-video bg-black rounded-xl overflow-hidden border border-purple-500/30">
-                <video
-                  ref={videoRef}
-                  src={videoUrl}
-                  className="w-full h-full object-contain"
-                  onTimeUpdate={handleTimeUpdate}
-                  onLoadedMetadata={handleLoadedMetadata}
-                  controls
-                />
-              </div>
-              
-              <div className="mt-4 text-center">
-                <p className="text-gray-400">מוכן לניתוח מתקדם עם Claude AI</p>
-                {duration > 0 && (
-                  <p className="text-gray-300 text-sm mt-2">
-                    אורך: {formatTime(duration)} | גודל: {(videoFile?.size / 1024 / 1024).toFixed(1)}MB
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // עמוד העריכה עם תוצאות האמיתיות מClaude
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-black">
-      {/* Header */}
-      <div className="bg-black/50 backdrop-blur-sm border-b border-purple-500/20 p-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+    <div className="min-h-screen bg-black flex flex-col">
+      {/* Header Toolbar */}
+      <div className="bg-gray-900 border-b border-gray-700 p-3">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-              🤖
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                ✂️
+              </div>
+              <h1 className="text-white font-bold text-lg">ProCut Editor</h1>
             </div>
-            <h1 className="text-2xl font-bold text-white">AI Video Studio Pro + Claude</h1>
-            {analysisResult && (
-              <div className="bg-green-500/20 text-green-200 px-3 py-1 rounded-full text-sm">
-                ✅ ניתח על ידי Claude AI
+            
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentStep('upload')}
+                className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm transition-all"
+              >
+                📁 פתח קובץ
+              </button>
+              <button
+                onClick={exportProject}
+                className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white px-6 py-2 rounded font-semibold text-sm transition-all"
+              >
+                💾 ייצא
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <span className="text-gray-400 text-sm">{videoFile?.name}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-400 text-sm">זום:</span>
+              <input
+                type="range"
+                min="0.5"
+                max="3"
+                step="0.1"
+                value={zoom}
+                onChange={(e) => setZoom(parseFloat(e.target.value))}
+                className="w-20"
+              />
+              <span className="text-gray-400 text-xs">{Math.round(zoom * 100)}%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-1">
+        {/* Left Sidebar - Tools */}
+        <div className="w-80 bg-gray-900 border-r border-gray-700 overflow-y-auto">
+          <div className="p-4">
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => setActivePanel('effects')}
+                className={`flex-1 py-2 px-3 rounded text-sm font-medium transition-all ${
+                  activePanel === 'effects' 
+                    ? 'bg-purple-600 text-white' 
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                🎨 אפקטים
+              </button>
+              <button
+                onClick={() => setActivePanel('text')}
+                className={`flex-1 py-2 px-3 rounded text-sm font-medium transition-all ${
+                  activePanel === 'text' 
+                    ? 'bg-purple-600 text-white' 
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                📝 טקסט
+              </button>
+              <button
+                onClick={() => setActivePanel('music')}
+                className={`flex-1 py-2 px-3 rounded text-sm font-medium transition-all ${
+                  activePanel === 'music' 
+                    ? 'bg-purple-600 text-white' 
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                🎵 מוזיקה
+              </button>
+            </div>
+
+            {/* Effects Panel */}
+            {activePanel === 'effects' && (
+              <div>
+                <h3 className="text-white font-semibold mb-3">אפקטים ופילטרים</h3>
+                
+                <div className="mb-6">
+                  <h4 className="text-gray-300 text-sm mb-2">בקרי צבע</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-gray-400 text-xs">בהירות</label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="200"
+                        value={activeFilters.brightness}
+                        onChange={(e) => setActiveFilters({...activeFilters, brightness: parseInt(e.target.value)})}
+                        className="w-full"
+                      />
+                      <span className="text-gray-500 text-xs">{activeFilters.brightness}%</span>
+                    </div>
+                    
+                    <div>
+                      <label className="text-gray-400 text-xs">ניגודיות</label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="200"
+                        value={activeFilters.contrast}
+                        onChange={(e) => setActiveFilters({...activeFilters, contrast: parseInt(e.target.value)})}
+                        className="w-full"
+                      />
+                      <span className="text-gray-500 text-xs">{activeFilters.contrast}%</span>
+                    </div>
+                    
+                    <div>
+                      <label className="text-gray-400 text-xs">רוויה</label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="200"
+                        value={activeFilters.saturation}
+                        onChange={(e) => setActiveFilters({...activeFilters, saturation: parseInt(e.target.value)})}
+                        className="w-full"
+                      />
+                      <span className="text-gray-500 text-xs">{activeFilters.saturation}%</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-gray-300 text-sm mb-3">ספריית אפקטים</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {effectsLibrary.map((effect) => (
+                      <button
+                        key={effect.id}
+                        onClick={() => applyEffect(effect)}
+                        className="bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-lg p-3 text-center transition-all group"
+                      >
+                        <div className="text-2xl mb-1 group-hover:scale-110 transition-transform">
+                          {effect.preview}
+                        </div>
+                        <div className="text-white text-xs font-medium">{effect.name}</div>
+                        <div className="text-gray-400 text-xs">{effect.category}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setCurrentStep('upload')}
-              className="bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white px-6 py-2 rounded-lg font-semibold transition-all"
-            >
-              🆕 פרויקט חדש
-            </button>
-            <button
-              onClick={exportVideo}
-              className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-8 py-2 rounded-lg font-semibold transition-all shadow-lg"
-            >
-              💾 ייצא פרויקט
-            </button>
-          </div>
-        </div>
-      </div>
 
-      <div className="p-6">
-        <div className="max-w-7xl mx-auto grid lg:grid-cols-4 gap-6">
-          
-          {/* Main Video Player */}
-          <div className="lg:col-span-3 space-y-6">
-            <div className="bg-black/40 backdrop-blur-sm rounded-2xl p-6 border border-purple-500/20">
-              <div className="aspect-video bg-black rounded-xl overflow-hidden relative border border-purple-500/30 mb-6">
-                <video
-                  ref={videoRef}
-                  src={videoUrl}
-                  className="w-full h-full object-contain"
-                  style={{
-                    filter: `brightness(${filters.brightness}%) contrast(${filters.contrast}%) saturate(${filters.saturation}%) blur(${filters.blur}px)`
-                  }}
-                  onTimeUpdate={handleTimeUpdate}
-                  onLoadedMetadata={handleLoadedMetadata}
-                />
+            {/* Text Panel */}
+            {activePanel === 'text' && (
+              <div>
+                <h3 className="text-white font-semibold mb-3">כלי טקסט</h3>
                 
-                {showSubtitles && getCurrentSubtitle() && (
-                  <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-black/80 text-white px-6 py-3 rounded-lg text-lg font-semibold backdrop-blur-sm">
-                    {getCurrentSubtitle().text}
-                  </div>
-                )}
-              </div>
+                <button
+                  onClick={addTextLayer}
+                  className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white py-3 rounded-lg font-semibold mb-4 transition-all"
+                >
+                  ➕ הוסף טקסט
+                </button>
 
-              {/* Professional Controls */}
-              <div className="bg-black/60 rounded-xl p-4 border border-purple-500/20">
-                <div className="flex items-center gap-4 mb-4">
-                  <button
-                    onClick={togglePlayPause}
-                    className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg flex items-center justify-center text-xl transition-all"
-                  >
-                    {isPlaying ? '⏸️' : '▶️'}
-                  </button>
-                  
-                  <button
-                    onClick={() => seekTo(currentTime - 10)}
-                    className="w-10 h-10 bg-gray-700 hover:bg-gray-600 text-white rounded-lg flex items-center justify-center transition-all"
-                  >
-                    ⏪
-                  </button>
-                  
-                  <button
-                    onClick={() => seekTo(currentTime + 10)}
-                    className="w-10 h-10 bg-gray-700 hover:bg-gray-600 text-white rounded-lg flex items-center justify-center transition-all"
-                  >
-                    ⏩
-                  </button>
-                  
-                  <div className="flex-1 mx-4">
-                    <div className="bg-gray-700 rounded-full h-2 relative cursor-pointer" onClick={(e) => {
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      const percent = (e.clientX - rect.left) / rect.width;
-                      seekTo(percent * duration);
-                    }}>
-                      <div 
-                        className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full relative"
-                        style={{ width: `${(currentTime / duration) * 100}%` }}
-                      >
-                        <div className="absolute right-0 top-1/2 transform translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg"></div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <span className="text-white font-mono text-sm bg-black/50 px-3 py-1 rounded">
-                    {formatTime(currentTime)} / {formatTime(duration)}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-4 gap-4">
-                  <div>
-                    <label className="text-white text-sm mb-2 block">🔊 עוצמת קול</label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.1"
-                      value={volume}
-                      onChange={(e) => setVolume(parseFloat(e.target.value))}
-                      className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="text-white text-sm mb-2 block">⚡ מהירות</label>
-                    <select
-                      value={playbackSpeed}
-                      onChange={(e) => setPlaybackSpeed(parseFloat(e.target.value))}
-                      className="w-full bg-black/50 border border-purple-500/30 rounded text-white p-1"
-                    >
-                      <option value={0.5}>0.5x</option>
-                      <option value={1}>1x</option>
-                      <option value={1.25}>1.25x</option>
-                      <option value={1.5}>1.5x</option>
-                      <option value={2}>2x</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <button
-                      onClick={addCut}
-                      className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-4 py-2 rounded-lg font-semibold transition-all"
-                    >
-                      ✂️ חתוך כאן
-                    </button>
-                  </div>
-                  
-                  <div>
-                    <button
-                      onClick={applyAutoEdit}
-                      className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white px-4 py-2 rounded-lg font-semibold transition-all"
-                    >
-                      🤖 עריכה AI
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Timeline */}
-            <div className="bg-black/40 backdrop-blur-sm rounded-2xl p-6 border border-purple-500/20">
-              <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                <span>📽️</span>
-                Timeline - חיתוכים מClaude AI
-              </h3>
-              
-              <div className="bg-gray-900 rounded-xl p-4 min-h-32">
-                <div className="flex items-center gap-2 mb-4 flex-wrap">
-                  {cuts.map((cut) => (
+                <div className="space-y-3">
+                  {textLayers.map((layer) => (
                     <div
-                      key={cut.id}
-                      onClick={() => applyCut(cut)}
-                      className={`bg-gradient-to-r ${
-                        cut.type === 'intro' ? 'from-green-500 to-emerald-500' :
-                        cut.type === 'main' ? 'from-blue-500 to-purple-500' :
-                        cut.type === 'outro' ? 'from-orange-500 to-red-500' :
-                        cut.type === 'auto-ai' ? 'from-pink-500 to-purple-500' :
-                        'from-gray-500 to-gray-600'
-                      } text-white px-4 py-2 rounded-lg cursor-pointer hover:scale-105 transition-all text-sm font-semibold relative group`}
+                      key={layer.id}
+                      onClick={() => setSelectedTextLayer(layer)}
+                      className={`bg-gray-800 border rounded-lg p-3 cursor-pointer transition-all ${
+                        selectedTextLayer?.id === layer.id 
+                          ? 'border-purple-500 bg-purple-900/30' 
+                          : 'border-gray-600 hover:border-gray-500'
+                      }`}
                     >
-                      {cut.label}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteCut(cut.id);
-                        }}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        ×
-                      </button>
+                      <div className="text-white text-sm font-medium mb-1">{layer.text}</div>
+                      <div className="text-gray-400 text-xs">
+                        {formatTime(layer.startTime)} - {formatTime(layer.endTime)}
+                      </div>
                     </div>
                   ))}
                 </div>
-                
-                <div className="text-gray-400 text-sm">
-                  💡 לחץ על חיתוך כדי לצפות, לחץ על X כדי למחוק
-                  {cuts.some(c => c.type === 'auto-ai') && (
-                    <span className="text-pink-300"> | 🤖 חיתוכים ורודים = מבוססי Claude AI</span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
 
-          {/* Right Panel - תוצאות אמיתיות מClaude */}
-          <div className="space-y-6">
-            
-            {/* Claude AI Analysis */}
-            {analysisResult && (
-              <div className="bg-black/40 backdrop-blur-sm rounded-2xl p-6 border border-purple-500/20">
-                <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                  <span>🧠</span>
-                  ניתוח Claude AI
-                </h3>
-                
-                <div className="space-y-4">
-                  <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 rounded-lg p-3">
-                    <h4 className="font-semibold text-green-300 text-sm mb-1">מצב רוח</h4>
-                    <p className="text-green-100 text-sm">{analysisResult.mood}</p>
-                  </div>
-                  
-                  <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30 rounded-lg p-3">
-                    <h4 className="font-semibold text-blue-300 text-sm mb-2">רגשות מזוהים</h4>
-                    <div className="flex flex-wrap gap-1">
-                      {analysisResult.emotions?.map((emotion, index) => (
-                        <span key={index} className="bg-purple-500/30 text-purple-200 px-2 py-1 rounded text-xs">
-                          {emotion}
-                        </span>
-                      ))}
+                {selectedTextLayer && (
+                  <div className="mt-4 p-3 bg-gray-800 rounded-lg border border-gray-600">
+                    <h4 className="text-white text-sm font-medium mb-2">עריכת טקסט</h4>
+                    
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        value={selectedTextLayer.text}
+                        onChange={(e) => {
+                          const updatedLayers = textLayers.map(layer =>
+                            layer.id === selectedTextLayer.id 
+                              ? { ...layer, text: e.target.value }
+                              : layer
+                          );
+                          setTextLayers(updatedLayers);
+                          setSelectedTextLayer({ ...selectedTextLayer, text: e.target.value });
+                        }}
+                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-1 text-white text-sm"
+                        placeholder="הקלד טקסט..."
+                      />
+                      
+                      <div className="flex gap-2">
+                        <input
+                          type="color"
+                          value={selectedTextLayer.color}
+                          onChange={(e) => {
+                            const updatedLayers = textLayers.map(layer =>
+                              layer.id === selectedTextLayer.id 
+                                ? { ...layer, color: e.target.value }
+                                : layer
+                            );
+                            setTextLayers(updatedLayers);
+                            setSelectedTextLayer({ ...selectedTextLayer, color: e.target.value });
+                          }}
+                          className="w-8 h-8 rounded"
+                        />
+                        
+                        <select
+                          value={selectedTextLayer.fontSize}
+                          onChange={(e) => {
+                            const updatedLayers = textLayers.map(layer =>
+                              layer.id === selectedTextLayer.id 
+                                ? { ...layer, fontSize: parseInt(e.target.value) }
+                                : layer
+                            );
+                            setTextLayers(updatedLayers);
+                            setSelectedTextLayer({ ...selectedTextLayer, fontSize: parseInt(e.target.value) });
+                          }}
+                          className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm"
+                        >
+                          <option value={16}>קטן</option>
+                          <option value={24}>בינוני</option>
+                          <option value={32}>גדול</option>
+                          <option value={48}>ענק</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
-                  
-                  {analysisResult.campaignAdvice && (
-                    <div className="bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-500/30 rounded-lg p-3">
-                      <h4 className="font-semibold text-orange-300 text-sm mb-1">עצות Claude</h4>
-                      <p className="text-orange-100 text-sm">{analysisResult.campaignAdvice}</p>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
             )}
 
-            {/* Filters */}
-            <div className="bg-black/40 backdrop-blur-sm rounded-2xl p-6 border border-purple-500/20">
-              <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                <span>🎨</span>
-                אפקטים ופילטרים
-              </h3>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="text-white text-sm mb-2 block">💡 בהירות</label>
-                  <input
-                    type="range"
-                    min="50"
-                    max="150"
-                    value={filters.brightness}
-                    onChange={(e) => setFilters({...filters, brightness: parseInt(e.target.value)})}
-                    className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-                  />
-                  <span className="text-gray-400 text-xs">{filters.brightness}%</span>
-                </div>
+            {/* Music Panel */}
+            {activePanel === 'music' && (
+              <div>
+                <h3 className="text-white font-semibold mb-3">ספריית מוזיקה</h3>
                 
-                <div>
-                  <label className="text-white text-sm mb-2 block">⚫ ניגודיות</label>
-                  <input
-                    type="range"
-                    min="50"
-                    max="150"
-                    value={filters.contrast}
-                    onChange={(e) => setFilters({...filters, contrast: parseInt(e.target.value)})}
-                    className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-                  />
-                  <span className="text-gray-400 text-xs">{filters.contrast}%</span>
-                </div>
-                
-                <div>
-                  <label className="text-white text-sm mb-2 block">🌈 רוויה</label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="200"
-                    value={filters.saturation}
-                    onChange={(e) => setFilters({...filters, saturation: parseInt(e.target.value)})}
-                    className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-                  />
-                  <span className="text-gray-400 text-xs">{filters.saturation}%</span>
-                </div>
-                
-                <div>
-                  <label className="text-white text-sm mb-2 block">🌀 טשטוש</label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="10"
-                    value={filters.blur}
-                    onChange={(e) => setFilters({...filters, blur: parseInt(e.target.value)})}
-                    className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-                  />
-                  <span className="text-gray-400 text-xs">{filters.blur}px</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Subtitles from Claude */}
-            <div className="bg-black/40 backdrop-blur-sm rounded-2xl p-6 border border-purple-500/20">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                  <span>💬</span>
-                  כתוביות Claude AI
-                </h3>
-                <button
-                  onClick={() => setShowSubtitles(!showSubtitles)}
-                  className={`px-3 py-1 rounded-lg text-sm font-semibold transition-all ${
-                    showSubtitles 
-                      ? 'bg-green-500 text-white' 
-                      : 'bg-gray-600 text-gray-300'
-                  }`}
-                >
-                  {showSubtitles ? 'מוצג' : 'מוסתר'}
-                </button>
-              </div>
-              
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {subtitles.map((subtitle, index) => (
-                  <div
-                    key={index}
-                    onClick={() => seekTo(subtitle.start)}
-                    className={`border rounded-lg p-3 cursor-pointer transition-all ${
-                      getCurrentSubtitle() === subtitle
-                        ? 'border-purple-500 bg-purple-500/20'
-                        : 'border-gray-600 bg-gray-800/50 hover:bg-gray-700/50'
-                    }`}
-                  >
-                    <div className="text-xs text-gray-400 mb-1">
-                      {formatTime(subtitle.start)} - {formatTime(subtitle.end)}
+                <div className="space-y-2">
+                  {musicLibrary.map((music) => (
+                    <div key={music.id} className="bg-gray-800 border border-gray-600 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-white text-sm font-medium">{music.name}</div>
+                        <button
+                          onClick={() => addMusicTrack(music)}
+                          className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs transition-all"
+                        >
+                          ➕ הוסף
+                        </button>
+                      </div>
+                      <div className="text-gray-400 text-xs">
+                        {music.category} • {Math.floor(music.duration / 60)}:{(music.duration % 60).toString().padStart(2, '0')}
+                      </div>
                     </div>
-                    <div className="text-white text-sm">{subtitle.text}</div>
+                  ))}
+                </div>
+
+                {audioTracks.length > 0 && (
+                  <div className="mt-4">
+                    <h4 className="text-white text-sm font-medium mb-2">רצועות אודיו</h4>
+                    <div className="space-y-2">
+                      {audioTracks.map((track) => (
+                        <div key={track.id} className="bg-gray-800 border border-gray-600 rounded-lg p-2">
+                          <div className="text-white text-sm">{track.name}</div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-gray-400 text-xs">עוצמה:</span>
+                            <input
+                              type="range"
+                              min="0"
+                              max="1"
+                              step="0.1"
+                              value={track.volume}
+                              onChange={(e) => {
+                                const updatedTracks = audioTracks.map(t =>
+                                  t.id === track.id ? { ...t, volume: parseFloat(e.target.value) } : t
+                                );
+                                setAudioTracks(updatedTracks);
+                              }}
+                              className="flex-1"
+                            />
+                            <span className="text-gray-400 text-xs">{Math.round(track.volume * 100)}%</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col">
+          {/* Video Preview */}
+          <div className="flex-1 bg-gray-800 flex items-center justify-center">
+            <div className="relative">
+              <video
+                ref={videoRef}
+                src={videoUrl}
+                className="max-h-96 max-w-full object-contain"
+                style={{
+                  filter: `brightness(${activeFilters.brightness}%) contrast(${activeFilters.contrast}%) saturate(${activeFilters.saturation}%) blur(${activeFilters.blur}px) hue-rotate(${activeFilters.hue}deg)`
+                }}
+                onTimeUpdate={handleTimeUpdate}
+                onLoadedMetadata={handleLoadedMetadata}
+              />
+              
+              {/* Text overlays */}
+              {textLayers.map((layer) => {
+                const isVisible = currentTime >= layer.startTime && currentTime <= layer.endTime;
+                if (!isVisible) return null;
+                
+                return (
+                  <div
+                    key={layer.id}
+                    className="absolute pointer-events-none"
+                    style={{
+                      left: `${layer.x}%`,
+                      top: `${layer.y}%`,
+                      fontSize: `${layer.fontSize}px`,
+                      color: layer.color,
+                      fontFamily: layer.fontFamily,
+                      fontWeight: layer.fontWeight,
+                      transform: 'translate(-50%, -50%)',
+                      textShadow: '2px 2px 4px rgba(0,0,0,0.5)'
+                    }}
+                  >
+                    {layer.text}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Video Controls */}
+          <div className="bg-gray-900 border-t border-gray-700 p-4">
+            <div className="flex items-center gap-4 mb-4">
+              <button
+                onClick={togglePlayPause}
+                className="w-12 h-12 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center justify-center text-xl transition-all"
+              >
+                {isPlaying ? '⏸️' : '▶️'}
+              </button>
+              
+              <button
+                onClick={() => seekTo(Math.max(0, currentTime - 10))}
+                className="w-10 h-10 bg-gray-700 hover:bg-gray-600 text-white rounded-lg flex items-center justify-center transition-all"
+              >
+                ⏪
+              </button>
+              
+              <button
+                onClick={() => seekTo(Math.min(duration, currentTime + 10))}
+                className="w-10 h-10 bg-gray-700 hover:bg-gray-600 text-white rounded-lg flex items-center justify-center transition-all"
+              >
+                ⏩
+              </button>
+              
+              <div className="flex-1 mx-4">
+                <div className="bg-gray-700 rounded-full h-2 relative cursor-pointer" onClick={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const percent = (e.clientX - rect.left) / rect.width;
+                  seekTo(percent * duration);
+                }}>
+                  <div 
+                    className="bg-purple-600 h-2 rounded-full relative"
+                    style={{ width: `${(currentTime / duration) * 100}%` }}
+                  >
+                    <div className="absolute right-0 top-1/2 transform translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg"></div>
+                  </div>
+                </div>
+              </div>
+              
+              <span className="text-white font-mono text-sm bg-gray-800 px-3 py-1 rounded">
+                {formatTime(currentTime)} / {formatTime(duration)}
+              </span>
+              
+              <button
+                onClick={splitAtCurrentTime}
+                className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-semibold transition-all"
+              >
+                ✂️ חתוך
+              </button>
+            </div>
+          </div>
+
+          {/* Timeline Area */}
+          <div className="bg-gray-950 border-t border-gray-700 p-4" style={{ height: '200px' }}>
+            <h3 className="text-white font-semibold mb-3">Timeline</h3>
+            
+            <div className="relative bg-gray-800 rounded-lg h-32 overflow-hidden">
+              {/* Time ruler */}
+              <div className="absolute top-0 left-0 right-0 h-6 bg-gray-700 border-b border-gray-600">
+                <div className="flex items-center h-full px-2">
+                  {Array.from({ length: Math.ceil(duration / 5) }, (_, i) => (
+                    <div key={i} className="flex-1 text-xs text-gray-400 border-r border-gray-600 pr-1">
+                      {formatTime(i * 5)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Video tracks */}
+              <div className="absolute top-6 left-0 right-0 bottom-0">
+                {/* Main video track */}
+                <div className="h-8 relative border-b border-gray-600">
+                  {timeline.filter(clip => clip.type === 'video').map((clip) => (
+                    <div
+                      key={clip.id}
+                      onClick={() => setSelectedClip(clip)}
+                      className={`absolute h-7 rounded cursor-pointer transition-all ${
+                        selectedClip?.id === clip.id 
+                          ? 'bg-purple-600 border-2 border-purple-400' 
+                          : 'bg-blue-600 hover:bg-blue-500'
+                      }`}
+                      style={{
+                        left: `${(clip.startTime / duration) * 100}%`,
+                        width: `${((clip.endTime - clip.startTime) / duration) * 100}%`
+                      }}
+                    >
+                      <div className="text-white text-xs p-1 truncate">
+                        {clip.name} {clip.effect && `(${clip.effectName})`}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Audio tracks */}
+                {audioTracks.map((track, index) => (
+                  <div key={track.id} className="h-6 relative border-b border-gray-600">
+                    <div
+                      className="absolute h-5 bg-green-600 rounded cursor-pointer"
+                      style={{
+                        left: `${(track.startTime / duration) * 100}%`,
+                        width: `${((track.endTime - track.startTime) / duration) * 100}%`
+                      }}
+                    >
+                      <div className="text-white text-xs p-1 truncate">
+                        🎵 {track.name}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Text tracks */}
+                {textLayers.map((layer) => (
+                  <div key={layer.id} className="h-6 relative border-b border-gray-600">
+                    <div
+                      onClick={() => setSelectedTextLayer(layer)}
+                      className={`absolute h-5 rounded cursor-pointer transition-all ${
+                        selectedTextLayer?.id === layer.id 
+                          ? 'bg-yellow-600 border border-yellow-400' 
+                          : 'bg-orange-600 hover:bg-orange-500'
+                      }`}
+                      style={{
+                        left: `${(layer.startTime / duration) * 100}%`,
+                        width: `${((layer.endTime - layer.startTime) / duration) * 100}%`
+                      }}
+                    >
+                      <div className="text-white text-xs p-1 truncate">
+                        📝 {layer.text}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
-              
-              {subtitles.length > 0 && (
-                <div className="mt-3 text-center">
-                  <span className="text-green-300 text-xs">✅ נוצר על ידי Claude AI</span>
-                </div>
-              )}
-            </div>
 
+              {/* Playhead */}
+              <div 
+                className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10"
+                style={{ left: `${(currentTime / duration) * 100}%` }}
+              >
+                <div className="absolute -top-2 -left-2 w-4 h-4 bg-red-500 rounded-full"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
